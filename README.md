@@ -4,7 +4,7 @@ ReviseRight — AI-Powered Flashcard & Revision App
 
 ReviseRight is a full-stack AI-powered mobile flashcard and revision application with an integrated multi-language code compiler. It helps students revise faster using AI-generated flashcards, spaced repetition, and simplified study notes.
 
-The app is built with React Native (Expo) and a Node.js/Express backend, and uses Google Gemini AI to convert complex notes into concise bullet points or ASCII-style visual diagrams. It also includes a built-in multi-language code compiler powered by the Piston API, allowing users to write, run, and test code directly inside the app.
+The app is built with React Native (Expo) and a Node.js/Express backend, and uses Google Gemini AI to convert complex notes into concise bullet points or ASCII-style visual diagrams. It also includes a built-in multi-language code compiler powered by the Gemini API, allowing users to write, run, and test code directly inside the app.
 
 ✨ Features
 
@@ -14,7 +14,7 @@ The app is built with React Native (Expo) and a Node.js/Express backend, and use
 
 🤖 Google Gemini AI for note simplification & ASCII diagrams
 
-💻 Built-in multi-language code compiler (Piston API)
+💻 Built-in multi-language code compiler (Gemini API)
 
 🌙 Dark / Light mode support
 
