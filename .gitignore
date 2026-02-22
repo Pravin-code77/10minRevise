@@ -1,1 +1,39 @@
-node_modules
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Environment Variables
+.env
+backend/.env
+frontend/.env
+
+# Expo / Mobile Build
+.expo/
+frontend/.expo/
+dist/
+web-build/
+/ios
+/android
+
+# Debug & Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+backend/*_log.txt
+backend/debug_*.txt
+backend/creation_debug.txt
+backend/available_models.txt
+
+# Utilities (Backend Scripts)
+backend/check_models.js
+backend/clear_db.js
+backend/debug_user.js
+backend/list_models_raw.js
+backend/reproduce_update.js
+backend/test_image_gen.js
+
+# OS Files
+.DS_Store
+Thumbs.db

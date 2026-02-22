@@ -214,3 +214,139 @@ exports.getStats = async (req, res) => {
         res.status(500).send('Server error');
     }
 };
+
+// @desc  Delete an entire set and all its cards
+exports.deleteSet = async (req, res) => {
+    try {
+        console.log(`[deleteSet] Called. SetID=${req.params.id} UserID=${req.user?.id}`);
+        const set = await FlashcardSet.findById(req.params.id);
+        if (!set) {
+            console.log('[deleteSet] Set not found');
+            return res.status(404).json({ msg: 'Set not found' });
+        }
+        if (set.user.toString() !== req.user.id) {
+            console.log(`[deleteSet] Unauthorized. SetOwner=${set.user} ReqUser=${req.user.id}`);
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        const delCards = await Flashcard.deleteMany({ set: req.params.id });
+        await FlashcardSet.findByIdAndDelete(req.params.id);
+        console.log(`[deleteSet] SUCCESS. Deleted ${delCards.deletedCount} cards + the set.`);
+        res.json({ msg: 'Set deleted' });
+    } catch (err) {
+        console.error('[deleteSet] ERROR:', err.message);
+        res.status(500).json({ msg: err.message });
+    }
+};
+
+// @desc  Delete a single card
+exports.deleteCard = async (req, res) => {
+    try {
+        console.log(`[deleteCard] Called. SetID=${req.params.id} CardID=${req.params.cardId} UserID=${req.user?.id}`);
+        const card = await Flashcard.findById(req.params.cardId);
+        if (!card) {
+            console.log('[deleteCard] Card not found');
+            return res.status(404).json({ msg: 'Card not found' });
+        }
+        if (card.user.toString() !== req.user.id) {
+            console.log(`[deleteCard] Unauthorized. CardOwner=${card.user} ReqUser=${req.user.id}`);
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        await Flashcard.findByIdAndDelete(req.params.cardId);
+        console.log(`[deleteCard] SUCCESS. Card ${req.params.cardId} deleted.`);
+        res.json({ msg: 'Card deleted' });
+    } catch (err) {
+        console.error('[deleteCard] ERROR:', err.message);
+        res.status(500).json({ msg: err.message });
+    }
+};
+
+// @desc  Add a single card to an existing set
+exports.addCardToSet = async (req, res) => {
+    try {
+        const set = await FlashcardSet.findById(req.params.id);
+        if (!set) return res.status(404).json({ msg: 'Set not found' });
+        if (set.user.toString() !== req.user.id)
+            return res.status(401).json({ msg: 'User not authorized' });
+
+        const { term, definition, type } = req.body;
+        let backContent = definition;
+
+        if (type && type !== 'raw') {
+            try {
+                backContent = await generateFlashcardContent(definition, type);
+            } catch (_) {
+                backContent = definition; // fall back to raw
+            }
+        }
+
+        const newCard = new Flashcard({
+            user: req.user.id,
+            set: set._id,
+            front: term,
+            back: backContent,
+            type: type || 'raw',
+        });
+
+        const saved = await newCard.save();
+        res.json(saved);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+};
+// @desc  Update an entire set (metadata + cards)
+exports.updateSet = async (req, res) => {
+    try {
+        const { title, description, cards, type } = req.body;
+        const setId = req.params.id;
+
+        const set = await FlashcardSet.findById(setId);
+        if (!set) return res.status(404).json({ msg: 'Set not found' });
+        if (set.user.toString() !== req.user.id)
+            return res.status(401).json({ msg: 'User not authorized' });
+
+        // 1. Update Set Metadata
+        set.title = title || set.title;
+        set.description = description !== undefined ? description : set.description;
+        await set.save();
+
+        // 2. Delete existing cards (Sync strategy: replace all)
+        await Flashcard.deleteMany({ set: setId });
+
+        // 3. Re-create cards (applying AI if needed)
+        const savedCards = [];
+        if (cards && cards.length > 0) {
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                let backContent = card.definition;
+
+                // Process AI only if it's not already processed (e.g. if definition changed or it's new)
+                // For simplicity in this "Sync" mode, we'll re-run AI if type is not raw
+                if (type && type !== 'raw') {
+                    try {
+                        backContent = await generateFlashcardContent(card.definition, type);
+                    } catch (_) {
+                        backContent = card.definition;
+                    }
+                }
+
+                const newCard = new Flashcard({
+                    user: req.user.id,
+                    set: set._id,
+                    front: card.term,
+                    back: backContent,
+                    type: type || 'raw'
+                });
+                const savedCard = await newCard.save();
+                savedCards.push(savedCard);
+            }
+        }
+
+        res.json({ set, cards: savedCards });
+    } catch (err) {
+        console.error("Update Set Error:", err);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+};

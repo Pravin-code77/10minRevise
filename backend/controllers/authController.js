@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const updateStreak = async (user) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0]; // e.g. '2026-02-22'
 
     let lastActive = user.lastActiveDate ? new Date(user.lastActiveDate) : null;
     if (lastActive) lastActive.setHours(0, 0, 0, 0);
@@ -23,8 +24,19 @@ const updateStreak = async (user) => {
             user.streak = 1;
             user.lastActiveDate = new Date();
         }
-        // If diffDays === 0, do nothing (already updated today)
+        // If diffDays === 0, already updated today — no change
     }
+
+    // Record today in activeDays (no duplicates)
+    if (!user.activeDays) user.activeDays = [];
+    if (!user.activeDays.includes(todayStr)) {
+        user.activeDays.push(todayStr);
+        // Keep only the last 90 days to avoid unbounded growth
+        if (user.activeDays.length > 90) {
+            user.activeDays = user.activeDays.slice(-90);
+        }
+    }
+
     await user.save();
 };
 
@@ -49,21 +61,7 @@ exports.register = async (req, res) => {
         // Password hashing is handled in the model pre-save hook
         await user.save();
 
-        const payload = {
-            user: {
-                id: user.id
-            }
-        };
-
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET || 'secret',
-            { expiresIn: 360000 },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
-        );
+        res.status(201).json({ msg: 'User registered successfully. Please login.' });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
@@ -121,18 +119,19 @@ exports.getMe = async (req, res) => {
 };
 
 exports.updateDetails = async (req, res) => {
-    const { name, email } = req.body;
-    console.log(`[DEBUG] updateDetails called. User search ID: ${req.user.id}. Data:`, { name, email });
+    const { name, email, reminderEnabled, reminderTime } = req.body;
+    console.log(`[DEBUG] updateDetails called for user ${req.user.id}. Fields:`, { name, email, reminderEnabled, reminderTime });
 
     try {
-        let user = await User.findById(req.user.id);
+        let user = await User.findById(req.user.id).select('-password');
         if (!user) {
-            console.log('[DEBUG] User not found');
             return res.status(404).json({ msg: 'User not found' });
         }
 
         if (name) user.name = name;
         if (email) user.email = email;
+        if (reminderEnabled !== undefined) user.reminderEnabled = reminderEnabled;
+        if (reminderTime) user.reminderTime = reminderTime;
 
         await user.save();
         console.log('[DEBUG] User updated successfully');
@@ -160,6 +159,29 @@ exports.updatePassword = async (req, res) => {
 
         await user.save();
         res.json({ msg: 'Password updated successfully' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+};
+
+exports.getStreak = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('streak lastActiveDate activeDays name');
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        // Update streak on every fetch (marks daily activity)
+        await updateStreak(user);
+
+        // Return last 30 active days for the weekly calendar dots
+        const last30 = (user.activeDays || []).slice(-30);
+
+        res.json({
+            streak: user.streak,
+            lastActiveDate: user.lastActiveDate,
+            activeDays: last30,
+            name: user.name,
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');

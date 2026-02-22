@@ -28,6 +28,11 @@ router.put('/update', authMiddleware, authController.updateDetails);
 // @access  Private
 router.put('/password', authMiddleware, authController.updatePassword);
 
+// @route   GET api/auth/streak
+// @desc    Get streak info
+// @access  Private
+router.get('/streak', authMiddleware, authController.getStreak);
+
 // @route   DELETE api/auth/delete
 // @desc    Delete account
 // @access  Private

@@ -26,6 +26,18 @@ const UserSchema = new mongoose.Schema({
     lastActiveDate: {
         type: Date,
         default: null
+    },
+    activeDays: {
+        type: [String], // ISO date strings e.g. '2026-02-22'
+        default: []
+    },
+    reminderEnabled: {
+        type: Boolean,
+        default: false
+    },
+    reminderTime: {
+        type: String,
+        default: "09:00"
     }
 });
 

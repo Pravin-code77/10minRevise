@@ -1,51 +1,62 @@
-const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
+
+const SUPPORTED_LANGUAGES = ['javascript', 'python', 'java', 'c', 'cpp'];
 
 const runCode = async (language, code) => {
-    // Piston API URL
-    const baseUrl = 'https://emkc.org/api/v2/piston/execute';
-
-    // Map frontend languages to Piston language/version
-    const languageMap = {
-        'javascript': { language: 'javascript', version: '18.15.0' },
-        'python': { language: 'python', version: '3.10.0' },
-        'java': { language: 'java', version: '15.0.2' },
-        'c': { language: 'c', version: '10.2.0' },
-        'cpp': { language: 'c++', version: '10.2.0' }
-    };
-
-    const langConfig = languageMap[language.toLowerCase()];
-    if (!langConfig) throw new Error("Unsupported language");
+    const lang = language.toLowerCase();
+    if (!SUPPORTED_LANGUAGES.includes(lang)) {
+        return {
+            stdout: null,
+            stderr: `Unsupported language: ${language}. Supported: ${SUPPORTED_LANGUAGES.join(', ')}`,
+            status: { description: 'Error' }
+        };
+    }
 
     try {
-        const response = await axios.post(baseUrl, {
-            language: langConfig.language,
-            version: langConfig.version,
-            files: [
-                {
-                    content: code
-                }
-            ]
-        });
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
-        const { run } = response.data;
+        const prompt = `You are a ${lang} code interpreter. Execute the following ${lang} code exactly as a real interpreter would and return ONLY the output.
 
-        // Piston returns: { run: { stdout: "...", stderr: "...", code: 0, signal: null, output: "..." } }
-        // We need to map it to what frontend expects.
-        // Frontend expects: res.data?.stdout || res.data?.stderr || res.data?.compile_output
+Rules:
+- Return ONLY what would appear in stdout if this code ran successfully.
+- If there is a runtime error or syntax error, return ONLY the error message that would appear in stderr, prefixed with "STDERR:".
+- Do NOT add explanations, markdown, code blocks, or any extra text.
+- Do NOT say "Here is the output" or similar phrases.
+- Simulate the EXACT output a real ${lang} interpreter/compiler would produce.
+
+Code:
+\`\`\`${lang}
+${code}
+\`\`\``;
+
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text().trim();
+
+        // Detect stderr vs stdout
+        if (raw.startsWith('STDERR:')) {
+            return {
+                stdout: null,
+                stderr: raw.replace(/^STDERR:\s*/i, '').trim(),
+                compile_output: raw,
+                status: { description: 'Error' }
+            };
+        }
 
         return {
-            stdout: run.stdout,
-            stderr: run.stderr,
-            compile_output: run.output, // detailed output including both
-            status: { description: run.code === 0 ? "Accepted" : "Error" }
+            stdout: raw,
+            stderr: null,
+            compile_output: raw,
+            status: { description: 'Accepted' }
         };
 
     } catch (error) {
-        console.error("Piston Error:", error);
+        console.error('Compiler (Gemini) Error:', error.message);
         return {
             stdout: null,
-            stderr: `Error communicating with Piston API: ${error.message}`,
-            status: { description: "Error" }
+            stderr: `Code execution failed: ${error.message}`,
+            status: { description: 'Error' }
         };
     }
 };
