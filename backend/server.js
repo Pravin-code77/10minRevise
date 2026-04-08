@@ -1,10 +1,11 @@
-// Forced restart - delete routes active
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const flashcardRoutes = require('./routes/flashcards');
@@ -18,17 +19,36 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/reviseright')
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log(err));
+// Mongoose connection cache for serverless (avoids new connection per request)
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected) return;
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+        console.error('MONGO_URI is not set!');
+        throw new Error('MONGO_URI environment variable is missing');
+    }
+    await mongoose.connect(uri);
+    isConnected = true;
+    console.log('MongoDB Connected');
+};
+
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('DB connection failed:', err.message);
+        res.status(500).json({ msg: 'Database connection failed' });
+    }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/api/compiler', compilerRoutes);
 
-// Simple debug route
+// Health check
 app.get('/', (req, res) => {
     res.send('ReviseRight Backend Running');
 });
