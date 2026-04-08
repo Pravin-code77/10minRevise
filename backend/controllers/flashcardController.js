@@ -20,19 +20,18 @@ exports.createSet = async (req, res) => {
         const savedSet = await newSet.save();
         console.log(`[createSet] Set Saved: ${savedSet._id}`);
 
-        let savedCards = [];
+        const savedCards = [];
         if (cards && cards.length > 0) {
-            console.log(`[createSet] Starting parallel AI generation for ${cards.length} cards`);
-            const promises = cards.map(async (card, i) => {
+            console.log(`[createSet] Processing ${cards.length} cards sequentially...`);
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
                 let backContent = card.definition;
+                
                 if (type && type !== 'raw') {
-                    try {
-                        backContent = await generateFlashcardContent(card.definition, type);
-                    } catch (aiErr) {
-                        console.error(`[createSet] AI Fail for card ${i}: ${aiErr.message}`);
-                        backContent = card.definition;
-                    }
+                    // This now has a 15s internal timeout and returns original text on fail
+                    backContent = await generateFlashcardContent(card.definition, type);
                 }
+
                 const newCard = new Flashcard({
                     user: req.user.id,
                     set: savedSet._id,
@@ -42,9 +41,8 @@ exports.createSet = async (req, res) => {
                 });
                 const savedCard = await newCard.save();
                 console.log(`[createSet] Card ${i} Saved: ${savedCard._id}`);
-                return savedCard;
-            });
-            savedCards = await Promise.all(promises);
+                savedCards.push(savedCard);
+            }
         }
 
         console.log('[createSet] SUCCESS. Returning response.');

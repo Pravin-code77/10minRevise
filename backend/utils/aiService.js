@@ -31,7 +31,10 @@ const generateFlashcardContent = async (text, option) => {
             return text;
         }
 
-        const result = await model.generateContent(prompt);
+        const aiPromise = model.generateContent(prompt);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 15000));
+
+        const result = await Promise.race([aiPromise, timeoutPromise]);
         const response = await result.response;
         let output = response.text();
 
@@ -41,16 +44,9 @@ const generateFlashcardContent = async (text, option) => {
         console.log('[AI Service] Generation successful.');
         return output;
     } catch (error) {
-        console.error("AI Generation Error Full Details:", JSON.stringify(error, null, 2));
-
-        // Check for 429 Quota Exceeded
-        if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
-            throw new Error(`Daily Limit Reached. Please try again later or verify your API Data Plan.`);
-        }
-
-        // Log generic message but throw specific
-        console.error("AI Generation Error Message:", error.message);
-        throw new Error(`AI Service Failed: ${error.message}`);
+        console.error("AI Generation Issue (Falling back to Raw):", error.message);
+        // CRITICAL: Return original text so the save doesn't fail
+        return text;
     }
 };
 
