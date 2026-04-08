@@ -53,6 +53,16 @@ app.get('/', (req, res) => {
     res.send('ReviseRight Backend Running');
 });
 
+// Temp debug: check env + db connection
+app.get('/api/debug', async (req, res) => {
+    res.json({
+        mongoUriSet: !!process.env.MONGO_URI,
+        mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + '...' : 'NOT SET',
+        dbState: mongoose.connection.readyState, // 0=disconnected,1=connected,2=connecting
+        nodeEnv: process.env.NODE_ENV
+    });
+});
+
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, '0.0.0.0', () => console.log(`Server started on port ${PORT}`));
