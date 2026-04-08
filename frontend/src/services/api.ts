@@ -5,8 +5,11 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
-    if (Platform.OS === 'web' && process.env.NODE_ENV === 'production') {
-        return '/api'; // Use current domain when deployed
+    if (Platform.OS === 'web') {
+        const isLocalHost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+        if (!isLocalHost) {
+            return '/api'; // Guarantee relative web usage in live Vercel deploy
+        }
     }
     // Dynamically get the host IP from Expo, fallback to current network IP if not available
     const hostUri = Constants.expoConfig?.hostUri;
