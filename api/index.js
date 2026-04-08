@@ -10,7 +10,12 @@ try {
     require('dotenv').config({ path: path.join(__dirname, '..', 'backend', '.env') });
 } catch (_) {}
 
-// Import Routes - using the correct relative path from /api/ to /backend/
+// PRE-LOAD MODELS FOR SERVERLESS STABILITY
+require('../backend/models/User');
+require('../backend/models/FlashcardSet');
+require('../backend/models/Flashcard');
+
+// Import Routes
 const authRoutes = require('../backend/routes/auth');
 const flashcardRoutes = require('../backend/routes/flashcards');
 const compilerRoutes = require('../backend/routes/compiler');
