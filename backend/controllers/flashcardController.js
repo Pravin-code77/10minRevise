@@ -3,6 +3,16 @@ const FlashcardSet = require('../models/FlashcardSet');
 const { generateFlashcardContent } = require('../utils/aiService');
 
 exports.createSet = async (req, res) => {
+    // TEMPORARY DEBUG
+    if (req.query.debug === 'true') {
+        return res.json({ 
+            reached: true, 
+            body: req.body, 
+            user: req.user,
+            env: { mongo: !!process.env.MONGO_URI, gemini: !!process.env.GEMINI_API_KEY }
+        });
+    }
+
     try {
         const { title, description, cards, type } = req.body;
         console.log(`[createSet] START. Title: ${title}, Cards: ${cards ? cards.length : 0}`);
