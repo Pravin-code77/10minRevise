@@ -1,7 +1,3 @@
-const Flashcard = require('../models/Flashcard');
-const FlashcardSet = require('../models/FlashcardSet');
-const { generateFlashcardContent } = require('../utils/aiService');
-
 exports.createSet = async (req, res) => {
     // TEMPORARY DEBUG
     if (req.query.debug === 'true') {
@@ -14,6 +10,11 @@ exports.createSet = async (req, res) => {
     }
 
     try {
+        // MOVE REQUIRES INSIDE TO CATCH LOADING ERRORS
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
+        const { generateFlashcardContent } = require('../utils/aiService');
+
         const { title, description, cards, type } = req.body;
         console.log(`[createSet] START. Title: ${title}, Cards: ${cards ? cards.length : 0}`);
 
@@ -68,8 +69,10 @@ exports.createSet = async (req, res) => {
 
 exports.getAllSets = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
+
         // Fetch all sets for user, sort by newest
-        // Optional: Aggregate to count cards?
         const sets = await FlashcardSet.find({ user: req.user.id }).sort({ createdAt: -1 });
 
         // Let's also attach card count for UI
@@ -91,6 +94,9 @@ exports.getAllSets = async (req, res) => {
 
 exports.getSetDetails = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
+
         console.log(`[DEBUG] getSetDetails called for ID: ${req.params.id}`);
         console.log(`[DEBUG] User ID from Token: ${req.user ? req.user.id : 'No User'}`);
 
@@ -125,6 +131,7 @@ exports.getSetDetails = async (req, res) => {
 
 exports.updateFlashcardStatus = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
         const { status } = req.body; // 'learning' or 'mastered'
         console.log(`[DEBUG] updateFlashcardStatus: ID=${req.params.id}, Status=${status}, User=${req.user.id}`);
 
@@ -167,14 +174,8 @@ exports.createFlashcard = async (req, res) => {
 };
 
 exports.getDueFlashcards = async (req, res) => {
-    // ...
-    // Assuming Review Mechanism still works on individual cards or sets? 
-    // Usually Review is cross-set or specific set. 
-    // Let's keep this as is for now? 
-    // "On clicking on set , details or all infroamtion of set gets showed."
-    // It doesn't explicitly say "Revise" tab changes.
-    // I made this endpoint for "Due" cards. 
     try {
+        const Flashcard = require('../models/Flashcard');
         const flashcards = await Flashcard.find({
             user: req.user.id,
             nextReviewDate: { $lte: new Date() }
@@ -188,6 +189,8 @@ exports.getDueFlashcards = async (req, res) => {
 
 exports.getStats = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
         const userId = req.user.id;
 
         // 1. Total Sets
@@ -217,6 +220,8 @@ exports.getStats = async (req, res) => {
 // @desc  Delete an entire set and all its cards
 exports.deleteSet = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
         console.log(`[deleteSet] Called. SetID=${req.params.id} UserID=${req.user?.id}`);
         const set = await FlashcardSet.findById(req.params.id);
         if (!set) {
@@ -241,6 +246,7 @@ exports.deleteSet = async (req, res) => {
 // @desc  Delete a single card
 exports.deleteCard = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
         console.log(`[deleteCard] Called. SetID=${req.params.id} CardID=${req.params.cardId} UserID=${req.user?.id}`);
         const card = await Flashcard.findById(req.params.cardId);
         if (!card) {
@@ -264,6 +270,10 @@ exports.deleteCard = async (req, res) => {
 // @desc  Add a single card to an existing set
 exports.addCardToSet = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
+        const { generateFlashcardContent } = require('../utils/aiService');
+
         const set = await FlashcardSet.findById(req.params.id);
         if (!set) return res.status(404).json({ msg: 'Set not found' });
         if (set.user.toString() !== req.user.id)
@@ -298,6 +308,10 @@ exports.addCardToSet = async (req, res) => {
 // @desc  Update an entire set (metadata + cards)
 exports.updateSet = async (req, res) => {
     try {
+        const Flashcard = require('../models/Flashcard');
+        const FlashcardSet = require('../models/FlashcardSet');
+        const { generateFlashcardContent } = require('../utils/aiService');
+
         const { title, description, cards, type } = req.body;
         const setId = req.params.id;
 
