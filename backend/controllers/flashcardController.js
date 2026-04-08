@@ -25,36 +25,31 @@ exports.createSet = async (req, res) => {
         const savedSet = await newSet.save();
         log(`[createSet] Set Saved: ${savedSet._id}`);
 
-        // 2. Create Cards Serially
-        const savedCards = [];
+        let savedCards = [];
         if (cards && cards.length > 0) {
-            for (let i = 0; i < cards.length; i++) {
-                const card = cards[i];
+            log(`[createSet] Starting parallel AI generation for ${cards.length} cards`);
+            const promises = cards.map(async (card, i) => {
                 let backContent = card.definition;
-
-                if (type !== 'raw') {
+                if (type && type !== 'raw') {
                     try {
-                        log(`[createSet] Generating AI for card ${i}`);
                         backContent = await generateFlashcardContent(card.definition, type);
                     } catch (aiErr) {
                         log(`[createSet] AI Fail for card ${i}: ${aiErr.message}`);
-                        // Fallback
                         backContent = card.definition;
                     }
                 }
-
                 const newCard = new Flashcard({
                     user: req.user.id,
                     set: savedSet._id,
                     front: card.term,
                     back: backContent,
-                    type
+                    type: type || 'raw'
                 });
-
                 const savedCard = await newCard.save();
-                savedCards.push(savedCard);
                 log(`[createSet] Card ${i} Saved: ${savedCard._id}`);
-            }
+                return savedCard;
+            });
+            savedCards = await Promise.all(promises);
         }
 
         log('[createSet] SUCCESS. Returning response.');

@@ -5,8 +5,8 @@ const generateFlashcardContent = async (text, option) => {
     try {
         // Instantiate fresh each call so .env key changes take effect without restart
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        // gemini-2.0-flash is verified to work with the current API Key (see available_models.txt)
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        // gemini-1.5-flash is stable and fast for serverless environments
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         console.log(`[AI Service] Generating content with option: ${option} | Key: ...${process.env.GEMINI_API_KEY?.slice(-6)}`);
 
