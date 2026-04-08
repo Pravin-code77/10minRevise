@@ -5,6 +5,9 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
+    if (Platform.OS === 'web' && process.env.NODE_ENV === 'production') {
+        return '/api'; // Use current domain when deployed
+    }
     // Dynamically get the host IP from Expo, fallback to current network IP if not available
     const hostUri = Constants.expoConfig?.hostUri;
     const lanIp = hostUri ? hostUri.split(':')[0] : '10.213.37.5';
