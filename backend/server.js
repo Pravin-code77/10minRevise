@@ -57,6 +57,24 @@ app.get('/', (req, res) => {
     res.send('ReviseRight Backend Running');
 });
 
+// Self-contained DB write test
+app.get('/api/test-db', async (req, res) => {
+    try {
+        const User = require('./models/User');
+        const testUser = new User({
+            name: 'Test DB',
+            email: `test_${Date.now()}@test.com`,
+            password: 'test'
+        });
+        await testUser.save();
+        const found = await User.findById(testUser._id);
+        await User.findByIdAndDelete(testUser._id);
+        res.json({ success: true, email: found.email });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, '0.0.0.0', () => console.log(`Server started on port ${PORT}`));
