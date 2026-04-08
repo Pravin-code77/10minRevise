@@ -19,33 +19,18 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Mongoose connection cache for serverless (avoids new connection per request)
-let isConnected = false;
-const connectDB = async () => {
-    if (isConnected) return;
-    const uri = process.env.MONGO_URI;
-    if (!uri) {
-        console.error('MONGO_URI is not set!');
-        throw new Error('MONGO_URI environment variable is missing');
-    }
-    await mongoose.connect(uri, {
+// Connect to MongoDB eagerly at module load (works for both serverless and regular server)
+const MONGO_URI = process.env.MONGO_URI;
+if (MONGO_URI && mongoose.connection.readyState === 0) {
+    mongoose.connect(MONGO_URI, {
         serverSelectionTimeoutMS: 30000,
         socketTimeoutMS: 30000,
-        connectTimeoutMS: 30000,
-    });
-    isConnected = true;
-    console.log('MongoDB Connected');
-};
-
-app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch (err) {
-        console.error('DB connection failed:', err.message);
-        res.status(500).json({ msg: 'Database connection failed' });
-    }
-});
+    })
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.error('MongoDB connection error:', err.message));
+} else if (!MONGO_URI) {
+    console.error('MONGO_URI is not set!');
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -54,17 +39,7 @@ app.use('/api/compiler', compilerRoutes);
 
 // Health check
 app.get('/', (req, res) => {
-    res.send('ReviseRight Backend Running');
-});
-
-// Temp debug: check env + db connection
-app.get('/api/debug', async (req, res) => {
-    res.json({
-        mongoUriSet: !!process.env.MONGO_URI,
-        mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + '...' : 'NOT SET',
-        dbState: mongoose.connection.readyState, // 0=disconnected,1=connected,2=connecting
-        nodeEnv: process.env.NODE_ENV
-    });
+    res.json({ status: 'ok', db: mongoose.connection.readyState });
 });
 
 if (process.env.NODE_ENV !== 'production') {
