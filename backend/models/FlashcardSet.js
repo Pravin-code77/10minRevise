@@ -19,4 +19,4 @@ const FlashcardSetSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('FlashcardSet', FlashcardSetSchema);
+module.exports = mongoose.models.FlashcardSet || mongoose.model('FlashcardSet', FlashcardSetSchema);

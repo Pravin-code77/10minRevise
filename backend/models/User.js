@@ -42,7 +42,6 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Password hashing middleware
-// Password hashing middleware
 UserSchema.pre('save', async function () {
     if (!this.isModified('password')) {
         return;

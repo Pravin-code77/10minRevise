@@ -15,7 +15,7 @@ const FlashcardSchema = new mongoose.Schema({
         required: true
     },
     back: {
-        type: String, // This could be the mermaid code, simple summary, or raw text
+        type: String, 
         required: true
     },
     type: {
@@ -38,4 +38,4 @@ const FlashcardSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Flashcard', FlashcardSchema);
+module.exports = mongoose.models.Flashcard || mongoose.model('Flashcard', FlashcardSchema);
