@@ -3,16 +3,11 @@ const FlashcardSet = require('../models/FlashcardSet');
 const { generateFlashcardContent } = require('../utils/aiService');
 
 exports.createSet = async (req, res) => {
-    const fs = require('fs');
-    const logFile = 'creation_debug.txt';
-    const log = (msg) => fs.appendFileSync(logFile, new Date().toISOString() + ': ' + msg + '\n');
-
     try {
         const { title, description, cards, type } = req.body;
-        log(`[createSet] START. Title: ${title}, Cards: ${cards ? cards.length : 0}`);
+        console.log(`[createSet] START. Title: ${title}, Cards: ${cards ? cards.length : 0}`);
 
         if (!req.user || !req.user.id) {
-            log('[createSet] ERROR: No User ID');
             return res.status(401).json({ msg: 'User not authorized' });
         }
 
@@ -23,18 +18,18 @@ exports.createSet = async (req, res) => {
             description
         });
         const savedSet = await newSet.save();
-        log(`[createSet] Set Saved: ${savedSet._id}`);
+        console.log(`[createSet] Set Saved: ${savedSet._id}`);
 
         let savedCards = [];
         if (cards && cards.length > 0) {
-            log(`[createSet] Starting parallel AI generation for ${cards.length} cards`);
+            console.log(`[createSet] Starting parallel AI generation for ${cards.length} cards`);
             const promises = cards.map(async (card, i) => {
                 let backContent = card.definition;
                 if (type && type !== 'raw') {
                     try {
                         backContent = await generateFlashcardContent(card.definition, type);
                     } catch (aiErr) {
-                        log(`[createSet] AI Fail for card ${i}: ${aiErr.message}`);
+                        console.error(`[createSet] AI Fail for card ${i}: ${aiErr.message}`);
                         backContent = card.definition;
                     }
                 }
@@ -46,18 +41,17 @@ exports.createSet = async (req, res) => {
                     type: type || 'raw'
                 });
                 const savedCard = await newCard.save();
-                log(`[createSet] Card ${i} Saved: ${savedCard._id}`);
+                console.log(`[createSet] Card ${i} Saved: ${savedCard._id}`);
                 return savedCard;
             });
             savedCards = await Promise.all(promises);
         }
 
-        log('[createSet] SUCCESS. Returning response.');
+        console.log('[createSet] SUCCESS. Returning response.');
         res.json({ set: savedSet, cards: savedCards });
 
     } catch (err) {
-        log(`[createSet] CRITICAL ERROR: ${err.message}\n${err.stack}`);
-        console.error("Create Set Error:", err);
+        console.error('Create Set Error:', err);
         res.status(500).json({ msg: err.message || 'Server Error' });
     }
 };
