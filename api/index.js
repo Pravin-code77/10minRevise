@@ -49,6 +49,34 @@ const connectDB = async () => {
     }
 };
 
+// Self-contained DB write test
+app.get('/api/test-db', async (req, res) => {
+    try {
+        const User = require('../backend/models/User');
+        const testUser = new User({
+            name: 'Test DB',
+            email: `test_${Date.now()}@test.com`,
+            password: 'test'
+        });
+        await testUser.save();
+        const found = await User.findById(testUser._id);
+        await User.findByIdAndDelete(testUser._id);
+        res.json({ success: true, email: found.email });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
+// Crash test for Flashcard Model
+app.get('/api/flash-test', (req, res) => {
+    try {
+        const Flashcard = require('../backend/models/Flashcard');
+        res.json({ msg: 'Flashcard model loaded successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Database connectivity middleware
 app.use(async (req, res, next) => {
     try {
