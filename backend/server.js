@@ -19,18 +19,33 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Connect to MongoDB eagerly at module load (works for both serverless and regular server)
-const MONGO_URI = process.env.MONGO_URI;
-if (MONGO_URI && mongoose.connection.readyState === 0) {
-    mongoose.connect(MONGO_URI, {
+// Mongoose connection cache for serverless (avoids new connection per request)
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected) return;
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+        console.error('MONGO_URI is not set!');
+        throw new Error('MONGO_URI environment variable is missing');
+    }
+    await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 30000,
         socketTimeoutMS: 30000,
-    })
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB connection error:', err.message));
-} else if (!MONGO_URI) {
-    console.error('MONGO_URI is not set!');
-}
+        connectTimeoutMS: 30000,
+    });
+    isConnected = true;
+    console.log('MongoDB Connected');
+};
+
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('DB connection failed:', err.message);
+        res.status(500).json({ msg: 'Database connection failed' });
+    }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -39,7 +54,7 @@ app.use('/api/compiler', compilerRoutes);
 
 // Health check
 app.get('/', (req, res) => {
-    res.json({ status: 'ok', db: mongoose.connection.readyState });
+    res.send('ReviseRight Backend Running');
 });
 
 if (process.env.NODE_ENV !== 'production') {
