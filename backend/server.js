@@ -62,4 +62,14 @@ if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, '0.0.0.0', () => console.log(`Server started on port ${PORT}`));
 }
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('GLOBAL ERROR:', err);
+    res.status(500).json({
+        msg: 'Global Server Error',
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? 'hidden' : err.stack // Actually let's show it for now
+    });
+});
+
 module.exports = app;
