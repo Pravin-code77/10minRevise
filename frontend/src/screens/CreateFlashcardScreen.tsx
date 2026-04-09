@@ -116,34 +116,21 @@ const CreateFlashcardScreen = ({ navigation }: any) => {
         setLoadingMsg(
             aiMode === 'raw'
                 ? 'Saving your flashcards…'
-                : `Running ${modeLabel} on card 1 of ${validCards.length}…`
+                : `Running ${modeLabel} on your set…`
         );
 
         try {
+            const payload = {
+                title,
+                description,
+                cards: validCards.map((c) => ({ term: c.term, definition: c.definition })),
+                type: aiMode,
+            };
+
             if (editingSetId) {
-                await flashcardService.updateSet(editingSetId, {
-                    title,
-                    description,
-                    cards: validCards.map((c, i) => {
-                        if (aiMode !== 'raw' && i > 0) {
-                            setLoadingMsg(`Running ${modeLabel} on card ${i + 1} of ${validCards.length}…`);
-                        }
-                        return { term: c.term, definition: c.definition };
-                    }),
-                    type: aiMode,
-                });
+                await flashcardService.updateSet(editingSetId, payload);
             } else {
-                await flashcardService.createSet({
-                    title,
-                    description,
-                    cards: validCards.map((c, i) => {
-                        if (aiMode !== 'raw' && i > 0) {
-                            setLoadingMsg(`Running ${modeLabel} on card ${i + 1} of ${validCards.length}…`);
-                        }
-                        return { term: c.term, definition: c.definition };
-                    }),
-                    type: aiMode,
-                });
+                await flashcardService.createSet(payload);
             }
 
             Alert.alert('✅ Done!', `Flashcard set ${editingSetId ? 'updated' : 'created'} successfully!`, [
@@ -155,8 +142,9 @@ const CreateFlashcardScreen = ({ navigation }: any) => {
             setTitle('');
             setDescription('');
         } catch (error: any) {
-            console.error(error);
-            Alert.alert('Error', error?.response?.data?.msg || 'Failed to create flashcard set.');
+            console.error('[CreateFlashcardScreen] Save Error:', error);
+            const errorMsg = error?.response?.data?.msg || error?.message || 'Failed to save flashcard set.';
+            Alert.alert('Error', errorMsg);
         } finally {
             setLoading(false);
             setLoadingMsg('');

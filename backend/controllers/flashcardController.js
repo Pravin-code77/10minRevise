@@ -22,21 +22,27 @@ exports.createSet = async (req, res) => {
 
         const savedCards = [];
         if (cards && cards.length > 0) {
-            console.log(`[createSet] Processing ${cards.length} cards sequentially...`);
-            for (let i = 0; i < cards.length; i++) {
-                const card = cards[i];
+            console.log(`[createSet] Generating AI content for ${cards.length} cards in parallel...`);
+            
+            // 1. Parallel AI Generation (The slow part)
+            const processedCards = await Promise.all(cards.map(async (card) => {
                 let backContent = card.definition;
-                
                 if (type && type !== 'raw') {
-                    // This now has a 15s internal timeout and returns original text on fail
                     backContent = await generateFlashcardContent(card.definition, type);
                 }
+                return { ...card, backContent };
+            }));
 
+            console.log(`[createSet] AI Generation complete. Saving ${processedCards.length} cards to DB...`);
+
+            // 2. Sequential DB Saves (Safe for serverless DB connections)
+            for (let i = 0; i < processedCards.length; i++) {
+                const card = processedCards[i];
                 const newCard = new Flashcard({
                     user: req.user.id,
                     set: savedSet._id,
                     front: card.term,
-                    back: backContent,
+                    back: card.backContent,
                     type: type || 'raw'
                 });
                 const savedCard = await newCard.save();
@@ -214,8 +220,10 @@ exports.updateSet = async (req, res) => {
         await Flashcard.deleteMany({ set: setId });
         const savedCards = [];
         if (cards && cards.length > 0) {
-            for (let i = 0; i < cards.length; i++) {
-                const card = cards[i];
+            console.log(`[updateSet] Generating AI content for ${cards.length} cards in parallel...`);
+            
+            // 1. Parallel AI Generation
+            const processedCards = await Promise.all(cards.map(async (card) => {
                 let backContent = card.definition;
                 if (type && type !== 'raw') {
                     try {
@@ -224,11 +232,19 @@ exports.updateSet = async (req, res) => {
                         backContent = card.definition;
                     }
                 }
+                return { ...card, backContent };
+            }));
+
+            console.log(`[updateSet] AI Generation complete. Updating ${processedCards.length} cards in DB...`);
+
+            // 2. Sequential DB Saves
+            for (let i = 0; i < processedCards.length; i++) {
+                const card = processedCards[i];
                 const newCard = new Flashcard({
                     user: req.user.id,
                     set: set._id,
                     front: card.term,
-                    back: backContent,
+                    back: card.backContent,
                     type: type || 'raw'
                 });
                 const savedCard = await newCard.save();
