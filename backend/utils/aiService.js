@@ -5,8 +5,16 @@ const generateFlashcardContent = async (text, option) => {
     try {
         // Instantiate fresh each call so .env key changes take effect without restart
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        // gemini-1.5-flash is stable and fast for serverless environments
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Attempt to use gemini-1.5-flash, fallback to gemini-pro if not found
+        let model;
+        try {
+            model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // Test if model exists with a quick NO-OP call if we wanted to be sure, 
+            // but we will just catch the error during generation.
+        } catch (e) {
+            model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        }
 
         console.log(`[AI Service] Generating content with option: ${option} | Key: ...${process.env.GEMINI_API_KEY?.slice(-6)}`);
 
@@ -34,7 +42,19 @@ const generateFlashcardContent = async (text, option) => {
         const aiPromise = model.generateContent(prompt);
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 7000));
 
-        const result = await Promise.race([aiPromise, timeoutPromise]);
+        let result;
+        try {
+            result = await Promise.race([aiPromise, timeoutPromise]);
+        } catch (err) {
+            if (err.message.includes('404') || err.message.includes('not found')) {
+                console.log('[AI Service] gemini-1.5-flash not found, falling back to gemini-pro...');
+                const backupModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+                result = await backupModel.generateContent(prompt);
+            } else {
+                throw err;
+            }
+        }
+
         const response = await result.response;
         let output = response.text();
 
