@@ -1,68 +1,55 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
+const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-pro'];
+
 const generateFlashcardContent = async (text, option) => {
     try {
-        // Instantiate fresh each call so .env key changes take effect without restart
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        
+        const promptMap = {
+            'visualize': `Convert the following study text into a descriptive image prompt for Mermaid.js or DALL-E. Focus on visual relationships. Text: "${text}"`,
+            'simplify': `Explain the following concept as if I am 10 years old. Be concise but clear. Concept: "${text}"`,
+            'raw': text
+        };
 
-        // Attempt to use gemini-1.5-flash, fallback to gemini-pro if not found
-        let model;
-        try {
-            model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            // Test if model exists with a quick NO-OP call if we wanted to be sure, 
-            // but we will just catch the error during generation.
-        } catch (e) {
-            model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        }
+        const prompt = promptMap[option] || text;
+        if (option === 'raw') return text;
 
-        console.log(`[AI Service] Generating content with option: ${option} | Key: ...${process.env.GEMINI_API_KEY?.slice(-6)}`);
+        console.log(`[AI Service] Attempting generation with option: ${option}`);
 
-        let prompt = "";
-        if (option === 'visualize') {
-            prompt = `
-            You are a study assistant. Create a clear, simple ASCII ART diagram to explain the concept.
-            Do NOT use Mermaid or graph code. Use standard characters (|, -, +, >) to draw boxes and arrows.
-            Keep it compact and fit within 30 characters width.
-            Text: ${text}
-            `;
-        } else if (option === 'simplify') {
-            prompt = `
-            You are a study assistant. Summarize the following text into MAXIMUM 5 concise bullet points.
-            - Each bullet must be very short (under 10 words).
-            - Use emojis to make it visual.
-            - Focus ONLY on the core concept.
-            Text: ${text}
-            `;
-        } else {
-            console.log('[AI Service] Option is raw, returning original text.');
-            return text;
-        }
+        let lastError = null;
+        for (const modelName of MODEL_FALLBACK_CHAIN) {
+            try {
+                console.log(`[AI Service] Trying model: ${modelName}...`);
+                const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
+                
+                const aiPromise = model.generateContent(prompt);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 8000));
 
-        const aiPromise = model.generateContent(prompt);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 7000));
+                const result = await Promise.race([aiPromise, timeoutPromise]);
+                const response = await result.response;
+                let output = response.text();
 
-        let result;
-        try {
-            result = await Promise.race([aiPromise, timeoutPromise]);
-        } catch (err) {
-            if (err.message.includes('404') || err.message.includes('not found')) {
-                console.log('[AI Service] gemini-1.5-flash not found, falling back to gemini-pro...');
-                const backupModel = genAI.getGenerativeModel({ model: "gemini-pro" });
-                result = await backupModel.generateContent(prompt);
-            } else {
-                throw err;
+                // Cleanup markdown code blocks if present
+                output = output.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+
+                console.log(`[AI Service] ✅ Success with ${modelName}`);
+                return output;
+
+            } catch (err) {
+                lastError = err;
+                console.log(`[AI Service] ❌ ${modelName} failed: ${err.message.split('\n')[0]}`);
+                
+                // If it's a timeout, maybe the next model will also time out, but we try anyway.
+                // If it's a 429 (Quota), the next model might have different quota.
+                continue;
             }
         }
 
-        const response = await result.response;
-        let output = response.text();
+        console.error("[AI Service] All models in fallback chain failed.");
+        throw lastError || new Error("All AI models failed to respond");
 
-        // Cleanup markdown code blocks if present
-        output = output.replace(/```mermaid/g, '').replace(/```/g, '').trim();
-
-        console.log('[AI Service] Generation successful.');
-        return output;
     } catch (error) {
         console.error("AI Generation Issue (Falling back to Raw):", error.message);
         // CRITICAL: Return original text so the save doesn't fail

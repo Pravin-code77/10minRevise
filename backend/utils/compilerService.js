@@ -3,6 +3,8 @@ require('dotenv').config();
 
 const SUPPORTED_LANGUAGES = ['javascript', 'python', 'java', 'c', 'cpp'];
 
+const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-pro'];
+
 const runCode = async (language, code) => {
     const lang = language.toLowerCase();
     if (!SUPPORTED_LANGUAGES.includes(lang)) {
@@ -15,8 +17,7 @@ const runCode = async (language, code) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
+        
         const prompt = `You are a ${lang} code interpreter. Execute the following ${lang} code exactly as a real interpreter would and return ONLY the output.
 
 Rules:
@@ -31,25 +32,44 @@ Code:
 ${code}
 \`\`\``;
 
-        const result = await model.generateContent(prompt);
-        const raw = result.response.text().trim();
+        console.log(`[Compiler Service] Attempting execution for ${lang}`);
 
-        // Detect stderr vs stdout
-        if (raw.startsWith('STDERR:')) {
-            return {
-                stdout: null,
-                stderr: raw.replace(/^STDERR:\s*/i, '').trim(),
-                compile_output: raw,
-                status: { description: 'Error' }
-            };
+        let lastError = null;
+        for (const modelName of MODEL_FALLBACK_CHAIN) {
+            try {
+                console.log(`[Compiler Service] Trying model: ${modelName}...`);
+                const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
+                
+                const result = await model.generateContent(prompt);
+                const raw = result.response.text().trim();
+
+                console.log(`[Compiler Service] ✅ Success with ${modelName}`);
+
+                // Detect stderr vs stdout
+                if (raw.startsWith('STDERR:')) {
+                    return {
+                        stdout: null,
+                        stderr: raw.replace(/^STDERR:\s*/i, '').trim(),
+                        compile_output: raw,
+                        status: { description: 'Error' }
+                    };
+                }
+
+                return {
+                    stdout: raw,
+                    stderr: null,
+                    compile_output: raw,
+                    status: { description: 'Accepted' }
+                };
+
+            } catch (err) {
+                lastError = err;
+                console.log(`[Compiler Service] ❌ ${modelName} failed: ${err.message.split('\n')[0]}`);
+                continue;
+            }
         }
 
-        return {
-            stdout: raw,
-            stderr: null,
-            compile_output: raw,
-            status: { description: 'Accepted' }
-        };
+        throw lastError || new Error("All AI models failed to respond");
 
     } catch (error) {
         console.error('Compiler (Gemini) Error:', error.message);
