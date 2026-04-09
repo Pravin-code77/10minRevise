@@ -32,7 +32,7 @@ const generateFlashcardContent = async (text, option) => {
         }
 
         const aiPromise = model.generateContent(prompt);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 15000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 7000));
 
         const result = await Promise.race([aiPromise, timeoutPromise]);
         const response = await result.response;

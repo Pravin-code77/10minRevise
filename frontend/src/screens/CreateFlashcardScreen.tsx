@@ -143,7 +143,14 @@ const CreateFlashcardScreen = ({ navigation }: any) => {
             setDescription('');
         } catch (error: any) {
             console.error('[CreateFlashcardScreen] Save Error:', error);
-            const errorMsg = error?.response?.data?.msg || error?.message || 'Failed to save flashcard set.';
+            let errorMsg = 'Failed to save flashcard set.';
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                errorMsg = 'Request timed out. The AI might be taking too long. Try saving as "Keep Raw" or reducing the number of cards.';
+            } else if (error?.response?.data?.msg) {
+                errorMsg = error.response.data.msg;
+            } else if (!error.response) {
+                errorMsg = 'Network error. Please check your internet connection or server status.';
+            }
             Alert.alert('Error', errorMsg);
         } finally {
             setLoading(false);

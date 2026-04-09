@@ -35,20 +35,15 @@ exports.createSet = async (req, res) => {
 
             console.log(`[createSet] AI Generation complete. Saving ${processedCards.length} cards to DB...`);
 
-            // 2. Sequential DB Saves (Safe for serverless DB connections)
-            for (let i = 0; i < processedCards.length; i++) {
-                const card = processedCards[i];
-                const newCard = new Flashcard({
-                    user: req.user.id,
-                    set: savedSet._id,
-                    front: card.term,
-                    back: card.backContent,
-                    type: type || 'raw'
-                });
-                const savedCard = await newCard.save();
-                console.log(`[createSet] Card ${i} Saved: ${savedCard._id}`);
-                savedCards.push(savedCard);
-            }
+            const cardsToInsert = processedCards.map(card => ({
+                user: req.user.id,
+                set: savedSet._id,
+                front: card.term,
+                back: card.backContent,
+                type: type || 'raw'
+            }));
+            const savedCardsResults = await Flashcard.insertMany(cardsToInsert);
+            savedCards.push(...savedCardsResults);
         }
 
         console.log('[createSet] SUCCESS. Returning response.');
@@ -237,19 +232,15 @@ exports.updateSet = async (req, res) => {
 
             console.log(`[updateSet] AI Generation complete. Updating ${processedCards.length} cards in DB...`);
 
-            // 2. Sequential DB Saves
-            for (let i = 0; i < processedCards.length; i++) {
-                const card = processedCards[i];
-                const newCard = new Flashcard({
-                    user: req.user.id,
-                    set: set._id,
-                    front: card.term,
-                    back: card.backContent,
-                    type: type || 'raw'
-                });
-                const savedCard = await newCard.save();
-                savedCards.push(savedCard);
-            }
+            const cardsToInsert = processedCards.map(card => ({
+                user: req.user.id,
+                set: set._id,
+                front: card.term,
+                back: card.backContent,
+                type: type || 'raw'
+            }));
+            const savedCardsResults = await Flashcard.insertMany(cardsToInsert);
+            savedCards.push(...savedCardsResults);
         }
         res.json({ set, cards: savedCards });
     } catch (err) {
