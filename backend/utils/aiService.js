@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-const MODEL_FALLBACK_CHAIN = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
 
 const generateFlashcardContent = async (text, option) => {
     try {
@@ -22,7 +22,7 @@ const generateFlashcardContent = async (text, option) => {
         for (const modelName of MODEL_FALLBACK_CHAIN) {
             try {
                 console.log(`[AI Service] Trying model: ${modelName}...`);
-                const model = genAI.getGenerativeModel({ model: modelName }); // Remove forced apiVersion for better compatibility
+                const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
                 
                 const aiPromise = model.generateContent({
                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
