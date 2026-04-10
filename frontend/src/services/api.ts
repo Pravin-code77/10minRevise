@@ -5,17 +5,29 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
+    // 1. Check for explicit environment variable (Best for EAS/Production)
+    if (process.env.EXPO_PUBLIC_API_URL) {
+        console.log('[API] Using Production URL:', process.env.EXPO_PUBLIC_API_URL);
+        return process.env.EXPO_PUBLIC_API_URL;
+    }
+
+    // 2. Web specific logic
     if (Platform.OS === 'web') {
         const isLocalHost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
         if (!isLocalHost) {
             return '/api'; // Guarantee relative web usage in live Vercel deploy
         }
     }
+
+    // 3. Local Development (Mobile)
     // Dynamically get the host IP from Expo, fallback to current network IP if not available
     const hostUri = Constants.expoConfig?.hostUri;
     const lanIp = hostUri ? hostUri.split(':')[0] : '10.213.37.5';
-    return `http://${lanIp}:5000/api`;
+    const localUrl = `http://${lanIp}:5000/api`;
+    console.log('[API] Using Local Development URL:', localUrl);
+    return localUrl;
 };
+
 
 const BASE_URL = getBaseUrl();
 console.log('API Base URL:', BASE_URL);

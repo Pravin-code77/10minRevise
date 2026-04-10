@@ -38,7 +38,9 @@
     "react-native-screens": "3.22.0",
     "react-native-svg": "13.9.0",
     "react-native-web": "^0.19.13",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "typescript": "^5.1.3",
+    "@types/react": "~18.2.14"
   },
   "private": true,
   "devDependencies": {

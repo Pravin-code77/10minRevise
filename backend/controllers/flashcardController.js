@@ -7,26 +7,46 @@ const { generateFlashcardContent } = require('../utils/aiService');
  * while intelligently detecting if re-processing is needed.
  */
 const processCardsIntelligently = async (cards, type, userId, setId) => {
-    return await Promise.all((cards || []).map(async (cardData) => {
+    const processed = [];
+    for (const cardData of (cards || [])) {
         let backContent = cardData.definition;
         let shouldRunAI = type && type !== 'raw';
 
-        // Check if this is an existing card
+        // Check if this is an existing card with same content and type
         if (cardData.id && shouldRunAI) {
-            const existing = await Flashcard.findById(cardData.id);
-            if (existing && existing.originalText === cardData.definition && existing.type === type) {
-                shouldRunAI = false;
-                backContent = existing.back;
-                console.log(`[AI] Skipping re-generation for: ${cardData.term}`);
+            try {
+                const existing = await Flashcard.findById(cardData.id);
+                if (existing && existing.originalText === cardData.definition && existing.type === type) {
+                    // Check if the card is an AI type but still has raw content (indicates previous failure)
+                    if (type !== 'raw' && existing.back === existing.originalText) {
+                        shouldRunAI = true;
+                        console.log(`[AI] Redoing failed generation for: ${cardData.term}`);
+                    } else {
+                        shouldRunAI = false;
+                        backContent = existing.back;
+                        console.log(`[AI] Skipping re-generation for: ${cardData.term}`);
+                    }
+                }
+            } catch (err) {
+                console.warn(`[AI] Error checking existing card ${cardData.id}:`, err.message);
             }
         }
 
+
         if (shouldRunAI) {
             console.log(`[AI] Processing: ${cardData.term} as ${type}`);
-            backContent = await generateFlashcardContent(cardData.definition, type);
+            try {
+                backContent = await generateFlashcardContent(cardData.definition, type);
+                // Respectful delay to prevent rate limiting
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } catch (err) {
+                console.error(`[AI] Failed to process ${cardData.term}:`, err.message);
+                // Fallback to definition if AI fails
+                backContent = cardData.definition;
+            }
         }
 
-        return {
+        processed.push({
             id: cardData.id,
             user: userId,
             set: setId,
@@ -34,9 +54,11 @@ const processCardsIntelligently = async (cards, type, userId, setId) => {
             back: backContent,
             originalText: cardData.definition,
             type: type || 'raw'
-        };
-    }));
+        });
+    }
+    return processed;
 };
+
 
 exports.createSet = async (req, res) => {
     try {

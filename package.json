@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "vercel-build": "cd frontend && npm install && npm run build && cd .. && npm run copy-build",
-    "copy-build": "node -e \"const fs = require('fs'); fs.cpSync('frontend/web-build', 'dist', {recursive: true});\""
+    "copy-build": "node -e \"const fs = require('fs'); fs.cpSync('frontend/web-build', 'dist', {recursive: true});\"",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "keywords": [],
   "author": "",
@@ -22,7 +24,10 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.12.1",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "expo": "~54.0.31",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   },
   "devDependencies": {
     "jest": "^30.2.0",
