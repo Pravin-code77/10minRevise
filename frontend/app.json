@@ -1,33 +1,17 @@
+
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "reviseright",
+    "slug": "reviseright",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "usesCleartextTraffic": true,
-      "notifications": {
-        "icon": "./assets/icon.png",
-        "color": "#4F46E5"
+      "package": "com.pravin.reviseright"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "951d41d8-1c08-41a9-a042-a7a24e2260d2"
       }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "owner": "pravin_07"
   }
 }
