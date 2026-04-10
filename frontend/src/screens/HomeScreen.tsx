@@ -145,9 +145,9 @@ const HomeScreens = ({ navigation }: Props) => {
 
         // Map existing cards to the format expected by Create screen
         const mappedCards = setCards.map(c => ({
-            id: c._id, // Use existing ID to help with mapping if needed
+            id: c._id, 
             term: c.front,
-            definition: c.back
+            definition: c.originalText || c.back // Prefer the raw text for editing
         }));
 
         // Navigate to 'Create' tab with parameters

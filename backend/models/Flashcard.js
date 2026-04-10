@@ -18,6 +18,9 @@ const FlashcardSchema = new mongoose.Schema({
         type: String, 
         required: true
     },
+    originalText: {
+        type: String
+    },
     type: {
         type: String,
         enum: ['visualize', 'simplify', 'raw'],

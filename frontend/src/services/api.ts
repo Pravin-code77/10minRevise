@@ -44,7 +44,7 @@ api.interceptors.request.use(
 export const flashcardService = {
     createSet: (data: { title: string; description: string; cards: { term: string; definition: string }[]; type: string }) =>
         api.post('/flashcards/sets', data),
-    updateSet: (id: string, data: { title: string; description: string; cards: { term: string; definition: string }[]; type: string }) =>
+    updateSet: (id: string, data: { title: string; description: string; cards: { id?: string; term: string; definition: string }[]; type: string }) =>
         api.put(`/flashcards/sets/${id}`, data),
     getAllSets: () => api.get('/flashcards/sets'),
     getSetDetails: (id: string) => api.get(`/flashcards/sets/${id}`),

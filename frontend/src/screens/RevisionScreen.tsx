@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView } from 'react-native';
 import { flashcardService } from '../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
@@ -190,18 +190,34 @@ const RevisionScreen = ({ route }: any) => {
                         activeOpacity={1}
                         onPress={() => setIsFlipped(!isFlipped)}
                     >
-                        {!isFlipped ? (
-                            <View style={styles.faceContainer}>
-                                <Text style={styles.label}>FRONT</Text>
-                                <Text style={[styles.cardText, { color: theme.colors.text }]}>{currentCard.front}</Text>
-                                <Text style={styles.hint}>(Tap to Flip)</Text>
-                            </View>
-                        ) : (
-                            <View style={styles.faceContainer}>
-                                <Text style={styles.label}>BACK ({currentCard.type})</Text>
-                                <Text style={[styles.cardText2, { color: theme.colors.text }]}>{currentCard.back}</Text>
-                            </View>
-                        )}
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {!isFlipped ? (
+                                <View style={styles.faceContainer}>
+                                    <Text style={styles.label}>FRONT</Text>
+                                    <Text style={[styles.cardText, { color: theme.colors.text }]}>{currentCard.front}</Text>
+                                    <Text style={styles.hint}>(Tap to Flip)</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.faceContainer}>
+                                    <Text style={styles.label}>BACK ({currentCard.type || 'raw'})</Text>
+                                    <Text style={[
+                                        styles.cardText2,
+                                        { color: theme.colors.text },
+                                        currentCard.type === 'visualize' && {
+                                            fontFamily: 'monospace',
+                                            fontSize: 11,
+                                            textAlign: 'left',
+                                            lineHeight: 16
+                                        }
+                                    ]}>
+                                        {currentCard.back}
+                                    </Text>
+                                </View>
+                            )}
+                        </ScrollView>
                     </TouchableOpacity>
                 </Animated.View>
             </GestureDetector>
@@ -225,24 +241,33 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
     },
     cardContent: {
         width: '100%',
         height: '100%',
-        padding: 20,
         justifyContent: 'center',
-        alignItems: 'center',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        padding: 24,
     },
     faceContainer: {
-        alignItems: 'center',
+        alignItems: 'flex-start', // Use flex-start to prevent centering lines of ASCII diagrams
         width: '100%',
     },
-    label: { fontSize: 12, color: '#999', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase' },
-    cardText: { fontSize: 20, textAlign: 'center', fontWeight: '500' },
-    cardText2: { fontSize: 15, textAlign: 'center', fontWeight: '500' },
-    hint: { marginTop: 40, color: '#ccc', fontStyle: 'italic' },
+    label: {
+        fontSize: 10,
+        color: '#999',
+        marginBottom: 20,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        alignSelf: 'center' // Keep label centered
+    },
+    cardText: { fontSize: 22, textAlign: 'center', fontWeight: '500', alignSelf: 'center' },
+    cardText2: { fontSize: 16, textAlign: 'left', fontWeight: '400' },
+    hint: { marginTop: 40, color: '#ccc', fontStyle: 'italic', alignSelf: 'center' },
 });
 
 export default RevisionScreen;

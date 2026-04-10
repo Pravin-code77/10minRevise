@@ -123,7 +123,11 @@ const CreateFlashcardScreen = ({ navigation }: any) => {
             const payload = {
                 title,
                 description,
-                cards: validCards.map((c) => ({ term: c.term, definition: c.definition })),
+                cards: validCards.map((c) => ({ 
+                    id: c.id.length > 20 ? c.id : undefined, // Only send MongoDB IDs, not temp IDs
+                    term: c.term, 
+                    definition: c.definition 
+                })),
                 type: aiMode,
             };
 

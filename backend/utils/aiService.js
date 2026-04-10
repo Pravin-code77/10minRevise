@@ -1,15 +1,15 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-pro'];
+const MODEL_FALLBACK_CHAIN = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
 
 const generateFlashcardContent = async (text, option) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         
         const promptMap = {
-            'visualize': `Convert the following study text into a descriptive image prompt for Mermaid.js or DALL-E. Focus on visual relationships. Text: "${text}"`,
-            'simplify': `Explain the following concept as if I am 10 years old. Be concise but clear. Concept: "${text}"`,
+            'visualize': `Generate a structured, top-down ASCII text diagram of the concept below. Use symbols like |, -, +, and > to show flow and hierarchy. IMPORTANT: Return ONLY the ASCII diagram. Do not include any introductory text, explanations, or markdown code blocks. Concept: "${text}"`,
+            'simplify': `Condense the following text into 3-5 concise, high-impact bullet points. Use simple language. IMPORTANT: Return ONLY the bullet points. Do not include any introductory text, conclusions, or conversational filler. Text: "${text}"`,
             'raw': text
         };
 
@@ -22,17 +22,26 @@ const generateFlashcardContent = async (text, option) => {
         for (const modelName of MODEL_FALLBACK_CHAIN) {
             try {
                 console.log(`[AI Service] Trying model: ${modelName}...`);
-                const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
+                const model = genAI.getGenerativeModel({ model: modelName }); // Remove forced apiVersion for better compatibility
                 
-                const aiPromise = model.generateContent(prompt);
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 8000));
+                const aiPromise = model.generateContent({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.1, // Lower temperature for more consistent, non-conversational output
+                        maxOutputTokens: 500,
+                    }
+                });
+                
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI Timeout')), 10000));
 
                 const result = await Promise.race([aiPromise, timeoutPromise]);
                 const response = await result.response;
                 let output = response.text();
 
-                // Cleanup markdown code blocks if present
-                output = output.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+                // Aggressive Cleanup: Remove conversational filler and markdown
+                output = output.replace(/Here is.*:|Here's.*:|In summary.*|Simplified:|Diagram:|^```[a-z]*\n|```$/gim, '').trim();
+                // If the AI still included code blocks, strip them
+                output = output.replace(/```/g, '').trim();
 
                 console.log(`[AI Service] ✅ Success with ${modelName}`);
                 return output;
@@ -40,9 +49,6 @@ const generateFlashcardContent = async (text, option) => {
             } catch (err) {
                 lastError = err;
                 console.log(`[AI Service] ❌ ${modelName} failed: ${err.message.split('\n')[0]}`);
-                
-                // If it's a timeout, maybe the next model will also time out, but we try anyway.
-                // If it's a 429 (Quota), the next model might have different quota.
                 continue;
             }
         }
@@ -52,7 +58,6 @@ const generateFlashcardContent = async (text, option) => {
 
     } catch (error) {
         console.error("AI Generation Issue (Falling back to Raw):", error.message);
-        // CRITICAL: Return original text so the save doesn't fail
         return text;
     }
 };
