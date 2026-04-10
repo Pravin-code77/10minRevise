@@ -5,11 +5,16 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
-    // 1. Check for explicit environment variable (Best for EAS/Production)
+    // 1. Check for explicit environment variable
     if (process.env.EXPO_PUBLIC_API_URL) {
-        console.log('[API] Using Production URL:', process.env.EXPO_PUBLIC_API_URL);
         return process.env.EXPO_PUBLIC_API_URL;
     }
+
+    // 2. Hardcoded Production Fallback (Ensures EAS builds work even if .env is missing)
+    if (!__DEV__) {
+        return 'https://reviseright-backend.onrender.com/api';
+    }
+
 
     // 2. Web specific logic
     if (Platform.OS === 'web') {
