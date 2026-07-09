@@ -94,13 +94,12 @@ Collaborative flashcards / shared decks
 
 Offline mode
 
-Web version
+This porject is live. Download the application apk file
+https://github.com/Pravin-code77/ReviseRight/tree/main/apk
 
 👨‍💻 Author
 
 Pravin Choramale
 Full-Stack / Mobile Developer
 
-📄 License
 
-This project is licensed under the MIT License.
